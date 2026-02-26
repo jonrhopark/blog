@@ -25,12 +25,13 @@ class _GuiStdout(io.TextIOBase):
         cb = getattr(_thread_local, "log_callback", None)
         if cb and s.strip():
             cb(s.rstrip())
-        else:
+        elif _real_stdout is not None:
             _real_stdout.write(s)
         return len(s)
 
     def flush(self):
-        _real_stdout.flush()
+        if _real_stdout is not None:
+            _real_stdout.flush()
 
 
 sys.stdout = _GuiStdout()
