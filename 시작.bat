@@ -35,3 +35,8 @@ if not exist ".env" (
 REM GUI 실행
 echo  GUI 실행 중...
 python gui.py
+if %errorlevel% neq 0 (
+    echo.
+    echo  [오류] 위 오류 메시지를 확인하세요.
+    pause
+)

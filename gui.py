@@ -165,44 +165,58 @@ class BlogApp(tk.Tk):
         self.log.delete("1.0", "end")
         self.status_var.set("실행 중...")
 
+        app_ref = self  # 클로저용 참조
+
         def worker():
+            old_stdout = sys.stdout
+
+            class LogWriter:
+                def write(self, s):
+                    if s.strip():
+                        msg = s.rstrip()
+                        app_ref.after(0, lambda m=msg: app_ref.log_msg(m))
+                def flush(self):
+                    pass
+
+            sys.stdout = LogWriter()
             try:
                 from run import run
-                # stdout 리다이렉트
-                import io
-
-                class LogWriter:
-                    def write(self, s):
-                        if s.strip():
-                            self.widget.after(0, lambda m=s: self.app.log_msg(m.rstrip()))
-                    def flush(self): pass
-
-                lw = LogWriter()
-                lw.widget = self
-                lw.app = self
-
-                old_stdout = sys.stdout
-                sys.stdout = lw
-
-                run(topic=topic, keyword=keyword, output_dir=self.out_var.get())
+                run(topic=topic, keyword=keyword, output_dir=app_ref.out_var.get())
 
                 sys.stdout = old_stdout
-                self.after(0, lambda: self.status_var.set("✅ 완료!"))
-                self.after(0, lambda: messagebox.showinfo(
+                app_ref.after(0, lambda: app_ref.status_var.set("✅ 완료!"))
+                app_ref.after(0, lambda: messagebox.showinfo(
                     "완료", "글 생성이 완료됐습니다!\n저장 폴더를 열어서 파일을 확인하세요."))
-                self.after(0, self._open_output)
+                app_ref.after(0, app_ref._open_output)
             except Exception as e:
-                sys.stdout = sys.__stdout__
-                self.after(0, lambda: self.log_msg(f"❌ 오류: {e}"))
-                self.after(0, lambda: self.status_var.set(f"오류: {e}"))
+                sys.stdout = old_stdout
+                import traceback
+                err = traceback.format_exc()
+                app_ref.after(0, lambda: app_ref.log_msg(f"❌ 오류: {e}\n{err}"))
+                app_ref.after(0, lambda: app_ref.status_var.set(f"오류: {e}"))
             finally:
-                self.after(0, lambda: self.run_btn.config(state="normal"))
-                self.after(0, lambda: self.topics_btn.config(state="normal"))
+                sys.stdout = old_stdout
+                app_ref.after(0, lambda: app_ref.run_btn.config(state="normal"))
+                app_ref.after(0, lambda: app_ref.topics_btn.config(state="normal"))
 
         t = threading.Thread(target=worker, daemon=True)
         t.start()
 
 
 if __name__ == "__main__":
-    app = BlogApp()
-    app.mainloop()
+    try:
+        app = BlogApp()
+        app.mainloop()
+    except Exception as e:
+        import traceback
+        # tkinter가 없거나 초기화 실패 시 에러를 파일로 저장
+        err_path = Path(__file__).parent / "error_log.txt"
+        with open(err_path, "w", encoding="utf-8") as f:
+            f.write(traceback.format_exc())
+        try:
+            import tkinter.messagebox as mb
+            mb.showerror("시작 오류", f"{e}\n\n자세한 내용: {err_path}")
+        except Exception:
+            pass
+        input(f"오류 발생: {e}\n자세한 내용은 error_log.txt를 확인하세요.\n엔터를 눌러 종료...")
+        raise
