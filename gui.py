@@ -8,8 +8,32 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 import threading
 import sys
 import os
+import io
 from pathlib import Path
 from dotenv import load_dotenv
+
+# ── Thread-safe stdout 리다이렉터 ─────────────────────────────────────────────
+_thread_local = threading.local()
+_real_stdout = sys.stdout  # 원본 stdout 보존
+
+
+class _GuiStdout(io.TextIOBase):
+    """write()를 호출한 thread가 GUI callback을 등록했으면 GUI 로그로,
+    아니면 원본 stdout으로 출력합니다."""
+
+    def write(self, s):
+        cb = getattr(_thread_local, "log_callback", None)
+        if cb and s.strip():
+            cb(s.rstrip())
+        else:
+            _real_stdout.write(s)
+        return len(s)
+
+    def flush(self):
+        _real_stdout.flush()
+
+
+sys.stdout = _GuiStdout()
 
 load_dotenv()
 BASE_DIR = Path(__file__).parent
@@ -168,34 +192,26 @@ class BlogApp(tk.Tk):
         app_ref = self  # 클로저용 참조
 
         def worker():
-            old_stdout = sys.stdout
+            # 이 thread에서만 GUI 로그 콜백 등록 (thread-local)
+            def _cb(msg):
+                app_ref.after(0, lambda m=msg: app_ref.log_msg(m))
+            _thread_local.log_callback = _cb
 
-            class LogWriter:
-                def write(self, s):
-                    if s.strip():
-                        msg = s.rstrip()
-                        app_ref.after(0, lambda m=msg: app_ref.log_msg(m))
-                def flush(self):
-                    pass
-
-            sys.stdout = LogWriter()
             try:
                 from run import run
                 run(topic=topic, keyword=keyword, output_dir=app_ref.out_var.get())
 
-                sys.stdout = old_stdout
                 app_ref.after(0, lambda: app_ref.status_var.set("✅ 완료!"))
                 app_ref.after(0, lambda: messagebox.showinfo(
                     "완료", "글 생성이 완료됐습니다!\n저장 폴더를 열어서 파일을 확인하세요."))
                 app_ref.after(0, app_ref._open_output)
             except Exception as e:
-                sys.stdout = old_stdout
                 import traceback
                 err = traceback.format_exc()
-                app_ref.after(0, lambda: app_ref.log_msg(f"❌ 오류: {e}\n{err}"))
+                app_ref.after(0, lambda: app_ref.log_msg(f"\n❌ 오류: {e}\n{err}"))
                 app_ref.after(0, lambda: app_ref.status_var.set(f"오류: {e}"))
             finally:
-                sys.stdout = old_stdout
+                _thread_local.log_callback = None
                 app_ref.after(0, lambda: app_ref.run_btn.config(state="normal"))
                 app_ref.after(0, lambda: app_ref.topics_btn.config(state="normal"))
 

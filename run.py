@@ -64,9 +64,7 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
     # API 키 확인
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        print("❌ .env 파일에 ANTHROPIC_API_KEY가 없습니다.")
-        print("   .env 파일을 열어서 키를 입력해주세요.")
-        sys.exit(1)
+        raise RuntimeError(".env 파일에 ANTHROPIC_API_KEY가 없습니다. API 키를 입력해주세요.")
 
     # 출력 디렉토리
     out_dir = Path(output_dir) if output_dir else Path(DEFAULT_OUTPUT_DIR)
@@ -74,9 +72,10 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
 
     # 글 번호 / 주제 결정
     topics_file = BASE_DIR / "topics.json"
-    if topic:
-        # 커맨드라인에서 직접 지정
-        # topics.json에서 현재 번호 파악
+    auto_mode = (topic is None)  # auto_mode: topics.json에서 자동 처리
+
+    if not auto_mode:
+        # 수동 모드: 주제 직접 지정
         num = None
         if topics_file.exists():
             with open(topics_file, 'r', encoding='utf-8') as f:
@@ -89,13 +88,12 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
             num = 32
         kw = keyword or topic
     else:
-        # topics.json에서 자동 로드
+        # 자동 모드: topics.json에서 로드
         num, topic, kw = load_next_topic(topics_file)
         if not topic:
             print("✅ topics.json의 모든 주제가 완료됐습니다!")
             print("   topics.json에 새 주제를 추가하거나, 직접 주제를 입력하세요.")
-            print("   예: python run.py \"새 주제 2026\"")
-            sys.exit(0)
+            return  # GUI에서 호출 시 sys.exit 대신 return
 
     print(f"\n{'='*55}")
     print(f"  {num}번 글 생성 시작: {topic}")
@@ -208,8 +206,8 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
         shutil.copy(thumb_t_path, thumb_t_out)
         shutil.copy(thumb_b_path, thumb_b_out)
 
-        # topics.json done 처리
-        if not topic or not keyword:  # auto mode
+        # topics.json done 처리 (auto mode만)
+        if auto_mode:
             mark_done(topics_file, num)
 
         # ── 최종 결과 출력 ────────────────────────────────────────────
@@ -240,7 +238,7 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
         print(f"\n❌ 오류 발생: {e}")
         import traceback
         traceback.print_exc()
-        sys.exit(1)
+        raise  # GUI worker가 잡아서 로그에 표시
     finally:
         # 작업 폴더 정리
         if work_dir.exists():
