@@ -1,0 +1,28 @@
+# API 키 - 절대 커밋 금지!
+.env
+
+# 출력 파일
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# 작업 임시 폴더
+post_*/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
