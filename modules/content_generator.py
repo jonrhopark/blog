@@ -82,7 +82,7 @@ def generate_tistory(num: int, topic: str, keyword: str, api_key: str,
 [출력 형식] JSON으로만 응답:
 {{
   "title": "글 제목 (SEO 최적화)",
-  "html": "완전한 HTML (<!DOCTYPE html>부터 </html>까지)",
+  "html": "블로그 본문 HTML (<h1>부터 마지막 태그까지, DOCTYPE/html/head/body 태그 제외)",
   "tags": ["티스토리태그1", "태그2", ...],
   "description": "메타 설명 150자"
 }}
@@ -130,7 +130,7 @@ def generate_blogger(num: int, topic: str, keyword: str, tistory_title: str,
 [출력 형식] JSON으로만 응답:
 {{
   "title": "경험담형 제목",
-  "html": "완전한 HTML (<!DOCTYPE html>부터 </html>까지)",
+  "html": "블로그 본문 HTML (<h1>부터 마지막 태그까지, DOCTYPE/html/head/body 태그 제외)",
   "labels": ["블로그스팟레이블1", "레이블2", ...],
   "persona": "설정한 페르소나 (예: 36세 직장맘, 연봉 5200만원)"
 }}
