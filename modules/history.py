@@ -13,10 +13,21 @@ SIMILARITY_THRESHOLD = 0.65  # 65% 이상 유사하면 중복 경고
 
 def load_history() -> list:
     """작성 이력 전체 로드 (최신순)"""
+    # history.json이 없으면 빈 파일 생성 후 빈 목록 반환
     if not HISTORY_FILE.exists():
+        try:
+            HISTORY_FILE.write_text("[]", encoding="utf-8")
+        except Exception:
+            pass
         return []
     try:
-        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        raw = HISTORY_FILE.read_text(encoding="utf-8-sig")  # Windows BOM 대응
+        raw = raw.strip()
+        if not raw:
+            return []
+        data = json.loads(raw)
+        if not isinstance(data, list):
+            return []
         return sorted(data, key=lambda x: (x.get("date", ""), x.get("num", 0)), reverse=True)
     except Exception:
         return []

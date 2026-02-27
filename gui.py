@@ -57,7 +57,7 @@ class BlogApp(tk.Tk):
         self.configure(bg="#f8fafc")
         self._build_ui()
         self._check_api_key()
-        self._refresh_history()
+        self.after(200, self._refresh_history)  # 창 렌더링 후 실행
 
     def _build_ui(self):
         # ── 헤더 ────────────────────────────────────────────────────
@@ -191,17 +191,19 @@ class BlogApp(tk.Tk):
         """작성 이력 리스트 갱신"""
         try:
             entries = load_history()
+        except Exception as e:
             self.hist_list.delete(0, "end")
-            if not entries:
-                self.hist_list.insert("end", "  (아직 작성된 글이 없습니다)")
-                return
-            for e in entries:
-                date  = e.get("date", "?")
-                num   = e.get("num", "?")
-                topic = e.get("topic", "")
-                self.hist_list.insert("end", f"  {date}  |  #{num}  |  {topic}")
-        except Exception:
-            pass
+            self.hist_list.insert("end", f"  [이력 로드 오류: {e}]")
+            return
+        self.hist_list.delete(0, "end")
+        if not entries:
+            self.hist_list.insert("end", "  (아직 작성된 글이 없습니다)")
+            return
+        for e in entries:
+            date  = e.get("date", "?")
+            num   = e.get("num", "?")
+            topic = e.get("topic", "")
+            self.hist_list.insert("end", f"  {date}  |  #{num}  |  {topic}")
 
     def _check_api_key(self):
         if not os.getenv("ANTHROPIC_API_KEY"):
