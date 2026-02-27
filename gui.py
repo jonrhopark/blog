@@ -143,34 +143,34 @@ class BlogApp(tk.Tk):
         hist_frame = tk.LabelFrame(
             self, text="  📋 작성 이력  ", bg="#f8fafc",
             font=("맑은 고딕", 10, "bold"), fg="#374151",
-            padx=8, pady=6
+            padx=8, pady=4
         )
         hist_frame.pack(fill="x", padx=20, pady=(0, 6))
 
-        # 리스트박스 + 스크롤바
-        hist_inner = tk.Frame(hist_frame, bg="#f8fafc")
-        hist_inner.pack(fill="x")
+        # 스크롤바 먼저 오른쪽에 배치, 리스트박스를 나머지 공간에
+        scrollbar = tk.Scrollbar(hist_frame, orient="vertical")
+        scrollbar.pack(side="right", fill="y")
 
-        scrollbar = tk.Scrollbar(hist_inner, orient="vertical")
         self.hist_list = tk.Listbox(
-            hist_inner,
-            height=6,
-            font=("Consolas", 9),
+            hist_frame,
+            height=5,
+            font=("맑은 고딕", 10),
             bg="#f1f5f9", fg="#1e293b",
             selectbackground="#3b82f6", selectforeground="white",
             yscrollcommand=scrollbar.set,
             activestyle="none",
+            relief="flat",
+            borderwidth=0,
         )
         scrollbar.config(command=self.hist_list.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.hist_list.pack(side="left", fill="x", expand=True)
+        self.hist_list.pack(side="left", fill="both", expand=True)
 
         # 새로고침 버튼
         tk.Button(
             hist_frame, text="↻ 새로고침",
             command=self._refresh_history,
             bg="#e5e7eb", font=("맑은 고딕", 9), relief="flat", padx=8
-        ).pack(anchor="e", pady=(4, 0))
+        ).pack(side="bottom", anchor="e", pady=(4, 0))
 
         # ── 로그 영역 ─────────────────────────────────────────────
         tk.Label(self, text="실행 로그", bg="#f8fafc",
