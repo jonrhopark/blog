@@ -176,14 +176,23 @@ class BlogApp(tk.Tk):
     def _run_auto(self):
         self._run_thread(topic=None, keyword=None)
 
+    def _save_api_key(self, api_key: str):
+        """API 키를 .env 파일에 저장"""
+        env_path = BASE_DIR / ".env"
+        env_path.write_text(f"ANTHROPIC_API_KEY={api_key}\n", encoding="utf-8")
+
     def _run_thread(self, topic, keyword):
         api_key = self.api_var.get().strip()
         if not api_key:
-            messagebox.showerror("API 키 없음", "API 키를 입력해주세요.")
+            messagebox.showerror("API 키 없음",
+                "API 키를 입력해주세요.\n\n"
+                "GUI 상단 'API 키' 입력란에\n"
+                "sk-ant-... 로 시작하는 키를 붙여넣으세요.")
             return
 
-        # API 키 환경변수 설정
+        # API 키 환경변수 설정 + .env 저장 (다음 실행부터 자동 입력)
         os.environ["ANTHROPIC_API_KEY"] = api_key
+        self._save_api_key(api_key)
 
         self.run_btn.config(state="disabled")
         self.topics_btn.config(state="disabled")
