@@ -25,8 +25,13 @@ class _GuiStdout(io.TextIOBase):
         cb = getattr(_thread_local, "log_callback", None)
         if cb and s.strip():
             cb(s.rstrip())
-        elif _real_stdout is not None:
-            _real_stdout.write(s)
+        else:
+            try:
+                real = _real_stdout
+                if real is not None:
+                    real.write(s)
+            except Exception:
+                pass
         return len(s)
 
     def flush(self):
@@ -218,8 +223,9 @@ class BlogApp(tk.Tk):
             except Exception as e:
                 import traceback
                 err = traceback.format_exc()
-                app_ref.after(0, lambda: app_ref.log_msg(f"\n❌ 오류: {e}\n{err}"))
-                app_ref.after(0, lambda: app_ref.status_var.set(f"오류: {e}"))
+                err_msg = str(e)
+                app_ref.after(0, lambda: app_ref.log_msg(f"\n❌ 오류: {err_msg}\n{err}"))
+                app_ref.after(0, lambda: app_ref.status_var.set(f"오류: {err_msg}"))
             finally:
                 _thread_local.log_callback = None
                 app_ref.after(0, lambda: app_ref.run_btn.config(state="normal"))

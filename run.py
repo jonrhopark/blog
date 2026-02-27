@@ -12,6 +12,7 @@ import sys
 import json
 import shutil
 import argparse
+from datetime import date
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -66,8 +67,9 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
     if not api_key:
         raise RuntimeError(".env 파일에 ANTHROPIC_API_KEY가 없습니다. API 키를 입력해주세요.")
 
-    # 출력 디렉토리
+    # 출력 디렉토리 (오늘 날짜 하위 폴더 자동 생성)
     out_dir = Path(output_dir) if output_dir else Path(DEFAULT_OUTPUT_DIR)
+    out_dir = out_dir / date.today().strftime("%Y-%m-%d")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # 글 번호 / 주제 결정
