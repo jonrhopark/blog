@@ -102,14 +102,11 @@ def generate_tistory(num: int, topic: str, keyword: str, api_key: str,
        <li style="margin-bottom:10px"><a href="{TISTORY_DOMAIN}/..." style="color:#3b82f6">• [키워드 포함 앵커텍스트]</a></li>
      </ul>
    </div>
-6. 본문 이미지 3개 위치에 다음 placeholder 삽입:
-   - CONTENT_IMG_1 (핵심 개념 비교: 전/후, A vs B 차이점)
-   - CONTENT_IMG_2 (수치/표: 세율표, 금액표, 계산식)
-   - CONTENT_IMG_3 (실전 사례/절차: 3가지 케이스 또는 단계별)
-   ※ Alt 태그 형식:
-     비교: "[A] vs [B] 비교 - [A특징], [B특징], [차이 수치]"
-     수치: "[주제] 세율/금액표 - [구간1] [비율], [구간2] [비율]"
-     사례: "[나이/상황] [주제] 사례 - [금액/조건] 시 [결과]"
+6. 본문 이미지 3개 위치에 다음 태그를 반드시 이 형식 그대로 삽입:
+   <img src="CONTENT_IMG_1" style="width:100%;max-width:800px;display:block;margin:20px auto;" alt="[A] vs [B] 비교 - [A특징], [B특징], [차이 수치]" />
+   <img src="CONTENT_IMG_2" style="width:100%;max-width:800px;display:block;margin:20px auto;" alt="[주제] 세율/금액표 - [구간1] [비율], [구간2] [비율]" />
+   <img src="CONTENT_IMG_3" style="width:100%;max-width:800px;display:block;margin:20px auto;" alt="[나이/상황] [주제] 사례 - [금액/조건] 시 [결과]" />
+   ※ alt 텍스트는 실제 이미지 내용에 맞게 채워서 삽입
 7. Q&A 섹션 2~3개 (핵심적인 것만 엄선)
 8. 롱테일 키워드 공략 (구체적 금액/대상 포함)
 
@@ -210,8 +207,8 @@ def generate_blogger(num: int, topic: str, keyword: str, tistory_title: str,
      알아보겠습니다, 살펴볼게요, ~에 대해, 해봤습니다 (단순 나열식)
 5. 페르소나 필수: 구체적인 나이, 직업, 금액 설정
    예: "저는 36세 직장맘이에요. 자녀 2명, 연봉 5,200만원..."
-6. 블로그스팟 썸네일 위치에 다음 placeholder 삽입 (body 첫 줄):
-   BLOGGER_THUMBNAIL
+6. 블로그스팟 썸네일 위치에 다음 태그를 body 첫 줄에 삽입 (반드시 이 형식 그대로):
+   <img src="BLOGGER_THUMBNAIL" style="width:100%;max-width:800px;display:block;margin:0 auto 20px;" alt="썸네일" />
 7. 실수/고민/감정 표현 포함
 8. 구체적 금액과 계산 포함
 
