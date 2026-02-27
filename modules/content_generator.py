@@ -63,6 +63,21 @@ def _extract_json(text: str) -> dict:
     raise ValueError("JSON을 찾을 수 없습니다.")
 
 
+def _strip_preamble(html: str) -> str:
+    """HTML 태그 시작 전에 붙은 영어 설명 텍스트 제거"""
+    idx = html.find('<')
+    return html[idx:] if idx != -1 else html
+
+
+def _strip_base64_images(html: str) -> str:
+    """base64 data URI 이미지를 HTML에서 완전 제거 (블로거 필터링 대응)"""
+    # <img src="data:..."> 태그 전체 제거
+    html = re.sub(r'<img[^>]*\bsrc=["\']data:[^"\']{10,}["\'][^>]*/?\s*>', '', html)
+    # 태그 밖에 노출된 data:image/... 텍스트 제거
+    html = re.sub(r'data:image/[^\s"\'<>]{10,}', '', html)
+    return html
+
+
 def generate_tistory(num: int, topic: str, keyword: str, api_key: str,
                      progress_cb=None) -> dict:
     """티스토리 HTML 생성"""
@@ -170,8 +185,8 @@ C. 편집자 한줄 코멘트 (editor-box 클래스):
 """
     result = _call_claude(prompt, api_key)
     data = _extract_json(result)
-    # CSS를 HTML 맨 앞에 자동 삽입 (블로그 템플릿 수정 불필요)
-    data["html"] = _INLINE_CSS + "\n" + data.get("html", "")
+    # HTML 앞 영어 설명 텍스트 제거 후 CSS 자동 삽입
+    data["html"] = _INLINE_CSS + "\n" + _strip_preamble(data.get("html", ""))
     return data
 
 
@@ -207,10 +222,9 @@ def generate_blogger(num: int, topic: str, keyword: str, tistory_title: str,
      알아보겠습니다, 살펴볼게요, ~에 대해, 해봤습니다 (단순 나열식)
 5. 페르소나 필수: 구체적인 나이, 직업, 금액 설정
    예: "저는 36세 직장맘이에요. 자녀 2명, 연봉 5,200만원..."
-6. 블로그스팟 썸네일 위치에 다음 태그를 body 첫 줄에 삽입 (반드시 이 형식 그대로):
-   <img src="BLOGGER_THUMBNAIL" style="width:100%;max-width:800px;display:block;margin:0 auto 20px;" alt="썸네일" />
-7. 실수/고민/감정 표현 포함
-8. 구체적 금액과 계산 포함
+6. 실수/고민/감정 표현 포함
+7. 구체적 금액과 계산 포함
+8. ⚠️ 절대 금지: <img> 태그 사용 금지. base64, data:image, src= 속성 일절 사용 불가. 이미지 없이 텍스트만으로 작성할 것.
 
 [주제별 페르소나 예시 - 나이·직업·금액 모두 명시]
 - 재테크/절세: 36세 직장맘(자녀2명, 연봉5200만원), 42세 배당투자자(배당5000만원), 29세 사회초년생(월급350만원)
@@ -240,6 +254,9 @@ def generate_blogger(num: int, topic: str, keyword: str, tistory_title: str,
 """
     result = _call_claude(prompt, api_key)
     data = _extract_json(result)
+    html = _strip_preamble(data.get("html", ""))
+    html = _strip_base64_images(html)   # base64 이미지 강제 제거
+    data["html"] = html
     return data
 
 

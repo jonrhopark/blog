@@ -45,16 +45,19 @@ load_dotenv()
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
+from modules.history import load_history, find_similar
+
 
 class BlogApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("블로그 자동화  돈·건강·AI 이야기")
-        self.geometry("700x620")
+        self.geometry("700x820")
         self.resizable(True, True)
         self.configure(bg="#f8fafc")
         self._build_ui()
         self._check_api_key()
+        self._refresh_history()
 
     def _build_ui(self):
         # ── 헤더 ────────────────────────────────────────────────────
@@ -136,11 +139,44 @@ class BlogApp(tk.Tk):
         )
         self.topics_btn.pack(side="left")
 
+        # ── 작성 이력 영역 ────────────────────────────────────────
+        hist_frame = tk.LabelFrame(
+            self, text="  📋 작성 이력  ", bg="#f8fafc",
+            font=("맑은 고딕", 10, "bold"), fg="#374151",
+            padx=8, pady=6
+        )
+        hist_frame.pack(fill="x", padx=20, pady=(0, 6))
+
+        # 리스트박스 + 스크롤바
+        hist_inner = tk.Frame(hist_frame, bg="#f8fafc")
+        hist_inner.pack(fill="x")
+
+        scrollbar = tk.Scrollbar(hist_inner, orient="vertical")
+        self.hist_list = tk.Listbox(
+            hist_inner,
+            height=6,
+            font=("Consolas", 9),
+            bg="#f1f5f9", fg="#1e293b",
+            selectbackground="#3b82f6", selectforeground="white",
+            yscrollcommand=scrollbar.set,
+            activestyle="none",
+        )
+        scrollbar.config(command=self.hist_list.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.hist_list.pack(side="left", fill="x", expand=True)
+
+        # 새로고침 버튼
+        tk.Button(
+            hist_frame, text="↻ 새로고침",
+            command=self._refresh_history,
+            bg="#e5e7eb", font=("맑은 고딕", 9), relief="flat", padx=8
+        ).pack(anchor="e", pady=(4, 0))
+
         # ── 로그 영역 ─────────────────────────────────────────────
         tk.Label(self, text="실행 로그", bg="#f8fafc",
                  font=("맑은 고딕", 10, "bold")).pack(anchor="w", padx=20)
         self.log = scrolledtext.ScrolledText(
-            self, height=18, font=("Consolas", 10),
+            self, height=12, font=("Consolas", 10),
             bg="#1e293b", fg="#e2e8f0",
             insertbackground="white"
         )
@@ -150,6 +186,22 @@ class BlogApp(tk.Tk):
         self.status_var = tk.StringVar(value="준비")
         tk.Label(self, textvariable=self.status_var, bg="#e5e7eb",
                  font=("맑은 고딕", 9), anchor="w").pack(fill="x")
+
+    def _refresh_history(self):
+        """작성 이력 리스트 갱신"""
+        try:
+            entries = load_history()
+            self.hist_list.delete(0, "end")
+            if not entries:
+                self.hist_list.insert("end", "  (아직 작성된 글이 없습니다)")
+                return
+            for e in entries:
+                date  = e.get("date", "?")
+                num   = e.get("num", "?")
+                topic = e.get("topic", "")
+                self.hist_list.insert("end", f"  {date}  |  #{num}  |  {topic}")
+        except Exception:
+            pass
 
     def _check_api_key(self):
         if not os.getenv("ANTHROPIC_API_KEY"):
@@ -176,6 +228,27 @@ class BlogApp(tk.Tk):
         if not topic:
             messagebox.showwarning("주제 필요", "주제를 입력해주세요.")
             return
+
+        # 중복 주제 체크
+        try:
+            similar = find_similar(topic)
+            if similar:
+                lines = "\n".join(
+                    f"  • [{e.get('date','?')}] #{e.get('num','?')} "
+                    f"{e.get('topic','')}  ({e['score']}% 유사)"
+                    for e in similar[:3]
+                )
+                answer = messagebox.askyesno(
+                    "유사 주제 감지",
+                    f"⚠️ 이미 작성한 비슷한 주제가 있습니다:\n\n{lines}"
+                    f"\n\n그래도 계속 생성하시겠습니까?",
+                    icon="warning",
+                )
+                if not answer:
+                    return
+        except Exception:
+            pass  # 중복 체크 오류는 무시하고 진행
+
         self._run_thread(topic=topic, keyword=self.kw_var.get().strip())
 
     def _run_auto(self):
@@ -217,6 +290,7 @@ class BlogApp(tk.Tk):
                 run(topic=topic, keyword=keyword, output_dir=app_ref.out_var.get())
 
                 app_ref.after(0, lambda: app_ref.status_var.set("✅ 완료!"))
+                app_ref.after(0, app_ref._refresh_history)
                 app_ref.after(0, lambda: messagebox.showinfo(
                     "완료", "글 생성이 완료됐습니다!\n저장 폴더를 열어서 파일을 확인하세요."))
                 app_ref.after(0, app_ref._open_output)

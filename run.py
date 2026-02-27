@@ -29,6 +29,7 @@ from modules.image_generator import (
     make_thumb_tistory, make_thumb_blogger
 )
 from modules.utils import count_korean, embed_image_base64, make_filename
+from modules.history import add_history
 
 
 def load_next_topic(topics_file: Path) -> tuple:
@@ -183,8 +184,8 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
             save_path=str(thumb_b_path)
         )
 
-        # 블로그스팟 썸네일 HTML에 삽입
-        b_html = embed_image_base64(b_html, "BLOGGER_THUMBNAIL", str(thumb_b_path))
+        # 블로그스팟 썸네일: 블로거는 base64 data URI를 필터링하므로 HTML에 삽입하지 않음
+        # → 썸네일 PNG 파일을 별도 저장 후 블로거 "게시물 설정 > 검색 설명/이미지"에서 직접 업로드
         print("  ✅ 썸네일 2개 생성 완료")
 
         # ── STEP 6: 파일 저장 ────────────────────────────────────────
@@ -208,6 +209,16 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
         shutil.copy(thumb_t_path, thumb_t_out)
         shutil.copy(thumb_b_path, thumb_b_out)
 
+        # 작성 이력 기록
+        add_history(
+            num=num,
+            topic=topic,
+            keyword=kw or "",
+            t_title=t_title,
+            b_title=b_title,
+            date_str=date.today().isoformat(),
+        )
+
         # topics.json done 처리 (auto mode만)
         if auto_mode:
             mark_done(topics_file, num)
@@ -224,7 +235,7 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
         print(f"  ③ {b_filename}")
         print(f"     → 블로그스팟 HTML 에디터에 붙여넣기")
         print(f"  ④ {thumb_b_filename}")
-        print(f"     → 블로그스팟 썸네일 업로드")
+        print(f"     → 블로그스팟: 게시물 작성 > 우측 '게시물 설정' > '검색 설명' 아래 이미지 업로드")
 
         meta = generate_meta_tags(t_tags, b_labels)
         print(meta)
