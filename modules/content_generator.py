@@ -66,14 +66,36 @@ def _extract_json(text: str) -> dict:
 def _strip_preamble(html: str) -> str:
     """HTML 태그 시작 전에 붙은 영어 설명 텍스트 제거"""
     idx = html.find('<')
-    return html[idx:] if idx != -1 else html
+    if idx == -1:
+        return html
+    # 태그 시작 이전에 두 줄 이상 들어온 영어 설명도 제거
+    before = html[:idx]
+    if before.strip():
+        # 앞에 붙은 텍스트가 있으면 제거
+        return html[idx:]
+    return html[idx:]
 
 
-def _strip_base64_images(html: str) -> str:
-    """base64 data URI 이미지를 HTML에서 완전 제거 (블로거 필터링 대응)"""
-    # <img src="data:..."> 태그 전체 제거
-    html = re.sub(r'<img[^>]*\bsrc=["\']data:[^"\']{10,}["\'][^>]*/?\s*>', '', html)
-    # 태그 밖에 노출된 data:image/... 텍스트 제거
+def _strip_english_opener(html: str) -> str:
+    """첫 번째 <p> 태그 내용이 영어 위주면 해당 <p> 제거"""
+    m = re.search(r'<p[^>]*>(.*?)</p>', html, re.IGNORECASE | re.DOTALL)
+    if not m:
+        return html
+    content = re.sub(r'<[^>]+>', '', m.group(1))  # 태그 제거
+    # 영어 알파벳 비율이 40% 초과면 해당 p 태그 제거
+    letters = [c for c in content if c.isalpha()]
+    if not letters:
+        return html
+    english_ratio = sum(1 for c in letters if ord(c) < 128) / len(letters)
+    if english_ratio > 0.40:
+        return html[:m.start()] + html[m.end():]
+    return html
+
+
+def _strip_all_images(html: str) -> str:
+    """블로거용: img 태그 전체 제거 (base64·일반 URL 모두)"""
+    html = re.sub(r'<img\b[^>]*/?\s*>', '', html, flags=re.IGNORECASE)
+    # 태그 밖에 노출된 data:image/... 텍스트도 제거
     html = re.sub(r'data:image/[^\s"\'<>]{10,}', '', html)
     return html
 
@@ -255,7 +277,8 @@ def generate_blogger(num: int, topic: str, keyword: str, tistory_title: str,
     result = _call_claude(prompt, api_key)
     data = _extract_json(result)
     html = _strip_preamble(data.get("html", ""))
-    html = _strip_base64_images(html)   # base64 이미지 강제 제거
+    html = _strip_english_opener(html)   # 첫 p가 영어면 제거
+    html = _strip_all_images(html)   # img 태그 전체 제거 (블로거는 이미지 없음)
     data["html"] = html
     return data
 
