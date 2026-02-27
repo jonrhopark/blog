@@ -8,6 +8,7 @@
   python run.py --output C:/내폴더       # 저장 경로 지정
 """
 import os
+import re
 import sys
 import json
 import shutil
@@ -60,6 +61,64 @@ def mark_done(topics_file: Path, num: int):
 
 def progress(msg: str):
     print(f"  ⏳ {msg}")
+
+
+def _get_alt(html: str, placeholder: str) -> str:
+    """img 태그에서 alt 텍스트 추출"""
+    # src="PLACEHOLDER" ... alt="..." 또는 alt="..." ... src="PLACEHOLDER"
+    m = re.search(
+        rf'<img\b[^>]*\bsrc=["\']?{re.escape(placeholder)}["\']?[^>]*\balt=["\']([^"\']+)["\']|'
+        rf'<img\b[^>]*\balt=["\']([^"\']+)["\'][^>]*\bsrc=["\']?{re.escape(placeholder)}["\']?',
+        html, re.IGNORECASE
+    )
+    if m:
+        return (m.group(1) or m.group(2) or "").strip()
+    return ""
+
+
+def _parse_alt_points(alt: str, topic: str) -> list:
+    """'제목 - 항목1, 항목2, ...' 형식을 포인트 리스트로 변환"""
+    if " - " in alt:
+        _, rest = alt.split(" - ", 1)
+        pts = [p.strip() for p in rest.split(",") if p.strip()]
+    else:
+        pts = [p.strip() for p in alt.split(",") if p.strip()] or [alt]
+    while len(pts) < 4:
+        pts.append(f"{topic[:12]} 확인")
+    return pts[:4]
+
+
+def _parse_alt_table(alt: str, topic: str) -> list:
+    """'제목 - 항목1, 항목2, ...' 형식을 테이블 데이터로 변환"""
+    if " - " in alt:
+        heading, rest = alt.split(" - ", 1)
+        items = [p.strip() for p in rest.split(",") if p.strip()]
+    else:
+        heading, items = alt, []
+    table = [["구분", heading[:16], "내용"]]
+    for i, item in enumerate(items[:5]):
+        parts = item.rsplit(" ", 1)
+        if len(parts) == 2:
+            table.append([str(i + 1), parts[0][:16], parts[1][:14]])
+        else:
+            table.append([str(i + 1), item[:22], "-"])
+    while len(table) < 3:
+        table.append([str(len(table)), "-", "-"])
+    return table
+
+
+def _parse_alt_steps(alt: str, topic: str) -> tuple:
+    """'상황 - 조건1, 조건2, 결과' 형식을 단계/결과로 변환"""
+    if " - " in alt:
+        _, rest = alt.split(" - ", 1)
+        items = [p.strip() for p in rest.split(",") if p.strip()]
+        result = items[-1] if len(items) > 1 else ""
+        steps = items[:-1] if len(items) > 1 else items
+    else:
+        steps, result = [alt], ""
+    while len(steps) < 4:
+        steps.append(f"{topic[:10]} 단계")
+    return steps[:4], result[:40]
 
 
 def run(topic: str = None, keyword: str = None, output_dir: str = None):
@@ -123,26 +182,27 @@ def run(topic: str = None, keyword: str = None, output_dir: str = None):
         img2_path = work_dir / "img2_table.png"
         img3_path = work_dir / "img3_steps.png"
 
+        # Claude가 생성한 HTML에서 alt 텍스트 추출 → 주제별 이미지 내용으로 사용
+        alt1 = _get_alt(t_html, "CONTENT_IMG_1") or f"{topic} 핵심 포인트"
+        alt2 = _get_alt(t_html, "CONTENT_IMG_2") or f"{topic} 수치 비교"
+        alt3 = _get_alt(t_html, "CONTENT_IMG_3") or f"{topic} 적용 절차"
+
         make_content_img1(
             topic=topic[:20],
-            subtitle=f"{topic} 핵심 포인트",
-            points=[f"2026년 주요 변경사항", f"대상 조건", f"신청 방법", f"주의사항"],
+            subtitle=alt1.split(" - ")[0][:44] if " - " in alt1 else alt1[:44],
+            points=_parse_alt_points(alt1, topic),
             save_path=str(img1_path)
         )
         make_content_img2(
             topic=topic[:20],
-            table_data=[
-                ["구분", "기존", "2026년"],
-                ["한도", "-", "변경"],
-                ["세율", "-", "변경"],
-                ["대상", "-", "확대"],
-            ],
+            table_data=_parse_alt_table(alt2, topic),
             save_path=str(img2_path)
         )
+        steps, result = _parse_alt_steps(alt3, topic)
         make_content_img3(
             topic=topic[:20],
-            steps=["자격 조건 확인", "필요 서류 준비", "홈택스/신청", "환급 수령"],
-            result=f"{topic} 적용 시 절세 효과",
+            steps=steps,
+            result=result or f"{topic} 적용 시 효과",
             save_path=str(img3_path)
         )
         print("  ✅ 이미지 3개 생성 완료 (800×450px)")

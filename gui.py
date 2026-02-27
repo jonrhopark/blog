@@ -145,42 +145,40 @@ class BlogApp(tk.Tk):
         )
         self.topics_btn.pack(side="left")
 
-        # ── 작성 이력 영역 (LabelFrame 없이 일반 Frame 사용) ───────
-        hist_outer = tk.Frame(self, bg="#e2e8f0", bd=0)
-        hist_outer.pack(fill="x", padx=20, pady=(0, 6))
+        # ── 작성 이력 영역 ────────────────────────────────────────
+        self.hist_list = None  # 기본값
+        try:
+            hist_outer = tk.Frame(self, bg="#e2e8f0")
+            hist_outer.pack(fill="x", padx=20, pady=(0, 6))
 
-        # 제목 행
-        hist_title_row = tk.Frame(hist_outer, bg="#e2e8f0")
-        hist_title_row.pack(fill="x")
-        tk.Label(hist_title_row, text="작성 이력", bg="#e2e8f0",
-                 font=("맑은 고딕", 10, "bold"), fg="#374151",
-                 padx=6, pady=3).pack(side="left")
-        tk.Button(
-            hist_title_row, text="새로고침",
-            command=self._refresh_history,
-            bg="#d1d5db", font=("맑은 고딕", 9), relief="flat", padx=6
-        ).pack(side="right", padx=4, pady=2)
+            hist_title_row = tk.Frame(hist_outer, bg="#e2e8f0")
+            hist_title_row.pack(fill="x")
+            tk.Label(hist_title_row, text="작성 이력", bg="#e2e8f0",
+                     font=("맑은 고딕", 10, "bold"), fg="#374151",
+                     padx=6, pady=3).pack(side="left")
+            tk.Button(
+                hist_title_row, text="새로고침",
+                command=self._refresh_history,
+                bg="#d1d5db", font=("맑은 고딕", 9), relief="flat", padx=6
+            ).pack(side="right", padx=4, pady=2)
 
-        # 리스트박스 + 스크롤바
-        hist_body = tk.Frame(hist_outer, bg="#f1f5f9")
-        hist_body.pack(fill="x")
+            hist_body = tk.Frame(hist_outer, bg="#f1f5f9")
+            hist_body.pack(fill="x")
 
-        scrollbar = tk.Scrollbar(hist_body, orient="vertical")
-        scrollbar.pack(side="right", fill="y")
+            scrollbar = tk.Scrollbar(hist_body, orient="vertical")
+            scrollbar.pack(side="right", fill="y")
 
-        self.hist_list = tk.Listbox(
-            hist_body,
-            height=5,
-            font=("맑은 고딕", 10),
-            bg="#f1f5f9", fg="#1e293b",
-            selectbackground="#3b82f6", selectforeground="white",
-            yscrollcommand=scrollbar.set,
-            activestyle="none",
-            relief="flat",
-            borderwidth=0,
-        )
-        scrollbar.config(command=self.hist_list.yview)
-        self.hist_list.pack(side="left", fill="both", expand=True)
+            self.hist_list = tk.Listbox(
+                hist_body,
+                height=5,
+                font=("맑은 고딕", 10),
+                bg="#f1f5f9", fg="#1e293b",
+            )
+            scrollbar.config(command=self.hist_list.yview)
+            self.hist_list.configure(yscrollcommand=scrollbar.set)
+            self.hist_list.pack(side="left", fill="both", expand=True)
+        except Exception as e:
+            print(f"[오류] 작성 이력 영역 생성 실패: {e}", flush=True)
 
         # ── 로그 영역 ─────────────────────────────────────────────
         tk.Label(self, text="실행 로그", bg="#f8fafc",
@@ -199,6 +197,8 @@ class BlogApp(tk.Tk):
 
     def _refresh_history(self):
         """작성 이력 리스트 갱신"""
+        if self.hist_list is None:
+            return
         try:
             entries = load_history()
         except Exception as e:

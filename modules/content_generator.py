@@ -77,18 +77,24 @@ def _strip_preamble(html: str) -> str:
 
 
 def _strip_english_opener(html: str) -> str:
-    """첫 번째 <p> 태그 내용이 영어 위주면 해당 <p> 제거"""
-    m = re.search(r'<p[^>]*>(.*?)</p>', html, re.IGNORECASE | re.DOTALL)
-    if not m:
-        return html
-    content = re.sub(r'<[^>]+>', '', m.group(1))  # 태그 제거
-    # 영어 알파벳 비율이 40% 초과면 해당 p 태그 제거
-    letters = [c for c in content if c.isalpha()]
-    if not letters:
-        return html
-    english_ratio = sum(1 for c in letters if ord(c) < 128) / len(letters)
-    if english_ratio > 0.40:
-        return html[:m.start()] + html[m.end():]
+    """앞쪽 <p> 태그가 영어 위주면 제거 (최대 3개 검사)"""
+    for _ in range(3):
+        m = re.search(r'<p[^>]*>(.*?)</p>', html, re.IGNORECASE | re.DOTALL)
+        if not m:
+            break
+        content = re.sub(r'<[^>]+>', '', m.group(1)).strip()
+        if not content:
+            break
+        letters = [c for c in content if c.isalpha()]
+        if not letters:
+            break
+        english_ratio = sum(1 for c in letters if ord(c) < 128) / len(letters)
+        # 첫 글자가 영어이거나 영어 비율 30% 초과면 제거
+        first_is_english = content and ord(content[0]) < 128 and content[0].isalpha()
+        if english_ratio > 0.30 or first_is_english:
+            html = html[:m.start()] + html[m.end():]
+        else:
+            break  # 한글 단락이 나오면 중단
     return html
 
 
